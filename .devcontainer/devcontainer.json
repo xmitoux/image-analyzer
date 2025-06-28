@@ -21,6 +21,9 @@
                     "--profile",
                     "black"
                 ],
+                "flake8.args": [
+                    "--disable=E501"
+                ],
                 "editor.formatOnSave": true,
                 "editor.codeActionsOnSave": {
                     "source.organizeImports": "explicit"
