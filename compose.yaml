@@ -1,0 +1,34 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - .:/workspace
+    ports:
+      - "8000:8000" # Django development server
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PIP_NO_CACHE_DIR=1
+      - PIP_DISABLE_PIP_VERSION_CHECK=1
+      - DJANGO_SETTINGS_MODULE=image_analyzer.settings
+      - DEBUG=1
+      - DATABASE_URL=postgres://developer:devpass123@postgres:5432/image_analyzer
+    depends_on:
+      - postgres
+    command: sleep infinity # Keep the container running for development
+
+  postgres:
+    image: postgres:17
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: image_analyzer
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: devpass123
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

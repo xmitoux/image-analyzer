@@ -1,0 +1,21 @@
+# Core Framework
+Django==5.2.3
+djangorestframework==3.16
+
+# Security & CORS
+django-cors-headers==4.7.0
+
+# Database
+psycopg==3.2.9
+
+# Environment management
+python-dotenv==1.1.1
+python-decouple==3.8
+
+# Development tools
+ipython==9.3.0
+
+# Code quality
+black==25.1.0
+flake8==7.3.0
+isort==6.0.1
