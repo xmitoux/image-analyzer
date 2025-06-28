@@ -1,12 +1,17 @@
+import os
 import random
 import time
 from datetime import datetime
 
+import requests
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import AiAnalysisLog
+
+# GCP Functions URL (環境変数から取得)
+MOCK_AI_ANALYSIS_API_URL = os.getenv('MOCK_AI_ANALYSIS_API_URL')
 
 
 @api_view(['GET'])
@@ -25,7 +30,7 @@ def hello_world(request):
 def analyze_image(request):
     request_timestamp = datetime.now()
 
-    # 画像パス取得
+    # リクエストの画像パス取得
     image_path = request.data.get('image_path')
 
     if not image_path:
@@ -36,38 +41,39 @@ def analyze_image(request):
 
     print(f"🔍 Analyzing image: {image_path}")
 
-    # Mock AI API呼び出し
-    ai_result = call_mock_ai_api(image_path)
+    # 環境に応じたAPI呼び出し
+    analysis_result = call_mock_ai_analysis_api(image_path)
 
     response_timestamp = datetime.now()
     processing_time_ms = int(
         (response_timestamp - request_timestamp).total_seconds() * 1000)
 
-    print(f"✅ Analysis result: {ai_result}")
+    print(f"✅ Analysis result: {analysis_result}")
 
     # DB保存処理
     try:
         analysis_log = AiAnalysisLog.objects.create(
             image_path=image_path,
-            success=ai_result['success'],
-            message=ai_result['message'],
-            classification=ai_result['estimated_data'].get('class') if ai_result['success'] else None,
-            confidence=ai_result['estimated_data'].get('confidence') if ai_result['success'] else None,
+            success=analysis_result['success'],
+            message=analysis_result['message'],
+            classification=analysis_result['estimated_data'].get(
+                'class') if analysis_result['success'] else None,
+            confidence=analysis_result['estimated_data'].get(
+                'confidence') if analysis_result['success'] else None,
             request_timestamp=request_timestamp,
             response_timestamp=response_timestamp
         )
 
         print(f"💾 Saved to DB with ID: {analysis_log.id}")
 
-        # 課題仕様に合わせたレスポンス形式
-        if ai_result['success']:
+        if analysis_result['success']:
             return Response({
                 'id': analysis_log.id,
                 'success': True,
                 'message': 'Analysis completed',
                 'result': {
-                    'class': ai_result['estimated_data']['class'],
-                    'confidence': ai_result['estimated_data']['confidence'],
+                    'class': analysis_result['estimated_data']['class'],
+                    'confidence': analysis_result['estimated_data']['confidence'],
                     'processing_time_ms': processing_time_ms
                 }
             })
@@ -75,7 +81,7 @@ def analyze_image(request):
             return Response({
                 'id': analysis_log.id,
                 'success': False,
-                'message': ai_result['message'],
+                'message': analysis_result['message'],
                 'result': {
                     'processing_time_ms': processing_time_ms
                 }
@@ -89,16 +95,26 @@ def analyze_image(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def call_mock_ai_api(image_path):
+def call_mock_ai_analysis_api(image_path):
     """
-    外部AI APIを模したモック処理🤖
-    実際はGCP Cloud Functionsにリクエスト投げる想定
+    環境に応じてAPI呼び出し先を切り替え
     """
-    # API処理時間をリアルにシミュレート⏰
+    if MOCK_AI_ANALYSIS_API_URL:
+        print("🌤️ Using GCP Cloud Functions")
+        return call_mock_ai_analysis_api_gcp(image_path)
+    else:
+        print("🏠 Using local mock")
+        return call_mock_ai_analysis_api_local(image_path)
+
+
+def call_mock_ai_analysis_api_local(image_path):
+    """
+    ローカル開発用のモック処理
+    """
     processing_time = random.uniform(0.3, 1.2)
     time.sleep(processing_time)
 
-    # 80%の確率で成功、20%で失敗（リアルなAPI感）
+    # 80%の確率で成功、20%で失敗
     if random.random() > 0.2:
         return {
             'success': True,
@@ -112,5 +128,38 @@ def call_mock_ai_api(image_path):
         return {
             'success': False,
             'message': 'Error:E50012',
+            'estimated_data': {}
+        }
+
+
+def call_mock_ai_analysis_api_gcp(image_path):
+    """
+    GCP Cloud Functions API呼び出し
+    """
+    try:
+        print(f"🌤️ Calling GCP Functions: {MOCK_AI_ANALYSIS_API_URL}")
+
+        response = requests.post(
+            MOCK_AI_ANALYSIS_API_URL,
+            json={'image_path': image_path},
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"❌ GCP API Error: {response.status_code}")
+            return {
+                'success': False,
+                'message': f'GCP API Error: {response.status_code}',
+                'estimated_data': {}
+            }
+
+    except requests.RequestException as e:
+        print(f"💥 Request Error: {str(e)}")
+        return {
+            'success': False,
+            'message': f'API Request Error: {str(e)}',
             'estimated_data': {}
         }

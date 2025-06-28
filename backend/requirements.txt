@@ -8,6 +8,9 @@ django-cors-headers==4.7.0
 # Database
 psycopg==3.2.9
 
+# HTTP requests
+requests==2.32.4
+
 # Environment management
 python-dotenv==1.1.1
 python-decouple==3.8
