@@ -6,6 +6,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .models import AiAnalysisLog
+
 
 @api_view(['GET'])
 def hello_world(request):
@@ -34,7 +36,7 @@ def analyze_image(request):
 
     print(f"🔍 Analyzing image: {image_path}")
 
-    # Mock AI API呼び出し（本当はHTTPリクエスト）
+    # Mock AI API呼び出し
     ai_result = call_mock_ai_api(image_path)
 
     response_timestamp = datetime.now()
@@ -43,29 +45,48 @@ def analyze_image(request):
 
     print(f"✅ Analysis result: {ai_result}")
 
-    # TODO: ここでデータベース保存処理（後で実装）💾
+    # DB保存処理
+    try:
+        analysis_log = AiAnalysisLog.objects.create(
+            image_path=image_path,
+            success=ai_result['success'],
+            message=ai_result['message'],
+            classification=ai_result['estimated_data'].get('class') if ai_result['success'] else None,
+            confidence=ai_result['estimated_data'].get('confidence') if ai_result['success'] else None,
+            request_timestamp=request_timestamp,
+            response_timestamp=response_timestamp
+        )
 
-    # 課題仕様に合わせたレスポンス形式
-    if ai_result['success']:
+        print(f"💾 Saved to DB with ID: {analysis_log.id}")
+
+        # 課題仕様に合わせたレスポンス形式
+        if ai_result['success']:
+            return Response({
+                'id': analysis_log.id,
+                'success': True,
+                'message': 'Analysis completed',
+                'result': {
+                    'class': ai_result['estimated_data']['class'],
+                    'confidence': ai_result['estimated_data']['confidence'],
+                    'processing_time_ms': processing_time_ms
+                }
+            })
+        else:
+            return Response({
+                'id': analysis_log.id,
+                'success': False,
+                'message': ai_result['message'],
+                'result': {
+                    'processing_time_ms': processing_time_ms
+                }
+            })
+
+    except Exception as e:
+        print(f"💥 DB Save Error: {str(e)}")
         return Response({
-            'id': random.randint(100, 999),  # 仮のID
-            'success': True,
-            'message': 'Analysis completed',
-            'result': {
-                'class': ai_result['estimated_data']['class'],
-                'confidence': ai_result['estimated_data']['confidence'],
-                'processing_time_ms': processing_time_ms
-            }
-        })
-    else:
-        return Response({
-            'id': random.randint(100, 999),
             'success': False,
-            'message': ai_result['message'],
-            'result': {
-                'processing_time_ms': processing_time_ms
-            }
-        })
+            'message': f'Database error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def call_mock_ai_api(image_path):
