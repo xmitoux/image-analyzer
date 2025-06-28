@@ -13,8 +13,6 @@ services:
       - PIP_NO_CACHE_DIR=1
       - PIP_DISABLE_PIP_VERSION_CHECK=1
       - DJANGO_SETTINGS_MODULE=image_analyzer.settings
-      - DEBUG=1
-      - DATABASE_URL=postgres://developer:devpass123@postgres:5432/image_analyzer
     depends_on:
       - postgres
     command: sleep infinity # Keep the container running for development

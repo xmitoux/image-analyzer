@@ -13,7 +13,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/*
 
 # Requirements からインストール
-COPY requirements.txt ./
+COPY backend/requirements.txt ./
 RUN pip install -r requirements.txt
 
 WORKDIR /workspace
