@@ -1,9 +1,9 @@
 import os
 import random
 import time
-from datetime import datetime
 
 import requests
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -28,7 +28,7 @@ def hello_world(request):
 
 @api_view(['POST'])
 def analyze_image(request):
-    request_timestamp = datetime.now()
+    request_timestamp = timezone.now()
 
     # リクエストの画像パス取得
     image_path = request.data.get('image_path')
@@ -44,7 +44,7 @@ def analyze_image(request):
     # 環境に応じたAPI呼び出し
     analysis_result = call_mock_ai_analysis_api(image_path)
 
-    response_timestamp = datetime.now()
+    response_timestamp = timezone.now()
     processing_time_ms = int(
         (response_timestamp - request_timestamp).total_seconds() * 1000)
 
