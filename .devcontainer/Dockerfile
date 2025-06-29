@@ -1,5 +1,9 @@
 FROM mcr.microsoft.com/devcontainers/python:3.12-bookworm
 
+# Install Node.js 22
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
+
 # Install system dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
@@ -12,7 +16,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Requirements からインストール
+# Update npm to latest
+RUN npm install -g npm@latest
+
+# Install Python requirements
 COPY backend/requirements.txt ./
 RUN pip install -r requirements.txt
 

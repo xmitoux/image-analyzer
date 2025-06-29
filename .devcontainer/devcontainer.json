@@ -1,18 +1,22 @@
 {
-    "name": "Image Analyzer Dev Environment",
+    "name": "Image Analyzer Full Stack",
     "dockerComposeFile": "../compose.yaml",
     "service": "app",
     "workspaceFolder": "/workspace",
     "customizations": {
         "vscode": {
             "extensions": [
+                // Python/Django
                 "ms-python.python",
                 "ms-python.black-formatter",
                 "ms-python.flake8",
                 "ms-python.isort",
-                "batisteo.vscode-django"
+                "batisteo.vscode-django",
+                // Node.js/TypeScript
+                "dbaeumer.vscode-eslint"
             ],
             "settings": {
+                // Python settings
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.formatting.provider": "black",
                 "python.linting.enabled": true,
@@ -24,10 +28,17 @@
                 "flake8.args": [
                     "--disable=E501"
                 ],
+                // Editor settings
                 "editor.formatOnSave": true,
                 "editor.codeActionsOnSave": {
-                    "source.organizeImports": "explicit"
-                }
+                    "source.organizeImports": "explicit",
+                    "source.fixAll.eslint": "explicit"
+                },
+                // Workspace specific
+                "eslint.workingDirectories": [
+                    "frontend"
+                ],
+                "typescript.preferences.includePackageJsonAutoImports": "auto"
             }
         }
     },

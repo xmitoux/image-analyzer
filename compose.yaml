@@ -17,6 +17,21 @@ services:
       - postgres
     command: sleep infinity # Keep the container running for development
 
+  frontend:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/frontend/node_modules
+    ports:
+      - "3000:3000" # Next.js development server
+    environment:
+      - NODE_ENV=development
+    working_dir: /workspace/frontend
+    command: sleep infinity # Keep the container running for development
+    init: true
+
   postgres:
     image: postgres:17
     volumes:
@@ -30,3 +45,4 @@ services:
 
 volumes:
   postgres_data:
+  node_modules:
