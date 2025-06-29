@@ -7,7 +7,7 @@ whitenoise==6.9.0
 django-cors-headers==4.7.0
 
 # Database
-psycopg==3.2.9
+psycopg2-binary==2.9.9
 dj-database-url==3.0.0
 
 # HTTP requests
