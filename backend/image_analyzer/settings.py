@@ -140,3 +140,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Google Cloud Platform 設定
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+# 本番環境でのバリデーション
+if not DEBUG and not GOOGLE_APPLICATION_CREDENTIALS:
+    raise ValueError(
+        "GOOGLE_APPLICATION_CREDENTIALS must be set in production")

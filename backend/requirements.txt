@@ -18,6 +18,9 @@ python-decouple==3.8
 # Development tools
 ipython==9.3.0
 
+# Google Cloud APIs
+google-cloud-vision==3.10.2
+
 # Code quality
 black==25.1.0
 flake8==7.3.0
