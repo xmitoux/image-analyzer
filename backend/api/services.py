@@ -1,21 +1,128 @@
 """
 Google Cloud Vision API サービス
 """
-import base64
-import io
 import os
-from typing import Dict, List, Optional, Union
+import uuid
+from datetime import datetime
+from typing import Dict, Union
 
-from django.conf import settings
-from google.cloud import vision
+from google.cloud import storage, vision
+from PIL import Image
 
 
-def analyze_image_objects_for_classification(image_content: Union[bytes, str]) -> Dict:
+def upload_image_to_gcs(image_file, bucket_name: str = None) -> Dict:
     """
-    Vision APIを使用してオブジェクト検出を行い、最上位の結果をラベルマスタと照合してclassificationを返す
+    画像ファイルをGoogle Cloud Storageにアップロードする
 
     Args:
-        image_content: 画像のバイナリデータまたはbase64文字列
+        image_file: アップロードする画像ファイル
+        bucket_name: GCSバケット名（環境変数から取得）
+
+    Returns:
+        {
+            'success': bool,
+            'message': str,
+            'gcs_path': str,  # gs://bucket/path/to/file.jpg
+            'public_url': str  # 公開URL
+        }
+    """
+    try:
+        # バケット名の取得
+        if not bucket_name:
+            bucket_name = os.getenv('GCS_BUCKET_NAME')
+
+        if not bucket_name:
+            return {
+                'success': False,
+                'message': 'GCS bucket name not configured',
+                'gcs_path': '',
+                'public_url': ''
+            }
+
+        # Google Cloud認証情報が設定されているかチェック
+        if not os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+            return {
+                'success': False,
+                'message': 'Google Cloud credentials not configured',
+                'gcs_path': '',
+                'public_url': ''
+            }
+
+        # 画像の形式チェック
+        try:
+            image = Image.open(image_file)
+            image.verify()  # 画像が有効かチェック
+            image_file.seek(0)  # ファイルポインタをリセット
+
+            # 対応フォーマットをチェック
+            if image.format not in ['JPEG', 'PNG', 'GIF', 'BMP', 'WEBP']:
+                return {
+                    'success': False,
+                    'message': f'Unsupported image format: {image.format}',
+                    'gcs_path': '',
+                    'public_url': ''
+                }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Invalid image file: {str(e)}',
+                'gcs_path': '',
+                'public_url': ''
+            }
+
+        # ファイル名の生成（タイムスタンプ + UUID）
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        file_extension = image.format.lower()
+        if file_extension == 'jpeg':
+            file_extension = 'jpg'
+
+        filename = f"images/{timestamp}_{unique_id}.{file_extension}"
+
+        # GCSクライアント作成
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(filename)
+
+        # ファイルアップロード
+        image_file.seek(0)
+        blob.upload_from_file(
+            image_file, content_type=f'image/{file_extension}')
+
+        # GCSパスと公開URLを生成
+        gcs_path = f"gs://{bucket_name}/{filename}"
+        public_url = f"https://storage.googleapis.com/{bucket_name}/{filename}"
+
+        print(f"📤 Image uploaded to GCS: {gcs_path}")
+        print(f"🌏 Public URL: {public_url}")
+        print(f"📁 Bucket: {bucket_name}")
+        print(f"📄 Filename: {filename}")
+
+        return {
+            'success': True,
+            'message': 'Image uploaded successfully',
+            'gcs_path': gcs_path,
+            'public_url': public_url,
+            'bucket_name': bucket_name,
+            'filename': filename
+        }
+
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Failed to upload image: {str(e)}',
+            'gcs_path': '',
+            'public_url': ''
+        }
+
+
+def analyze_image_from_gcs_path(gcs_path: str) -> Dict:
+    """
+    GCSパスからVision APIを使用してオブジェクト検出を行う
+
+    Args:
+        gcs_path: GCSパス (gs://bucket/path/to/image.jpg)
 
     Returns:
         {
@@ -38,39 +145,12 @@ def analyze_image_objects_for_classification(image_content: Union[bytes, str]) -
                 'estimated_data': {}
             }
 
-        # 画像データの準備
-        if isinstance(image_content, str):
-            # data URL形式の場合、プレフィックスを除去
-            if image_content.startswith('data:image/'):
-                image_content = image_content.split(',', 1)[1]
-
-            try:
-                image_content = base64.b64decode(image_content)
-            except Exception as decode_error:
-                return {
-                    'success': False,
-                    'message': f'Invalid base64 data: {str(decode_error)}',
-                    'estimated_data': {}
-                }
-
-        # 画像データのサイズチェック
-        if len(image_content) == 0:
-            return {
-                'success': False,
-                'message': 'Empty image data',
-                'estimated_data': {}
-            }
-
-        if len(image_content) > 20 * 1024 * 1024:  # 20MB制限
-            return {
-                'success': False,
-                'message': 'Image data too large (max 20MB)',
-                'estimated_data': {}
-            }
-
         # Vision APIクライアント作成
         client = vision.ImageAnnotatorClient()
-        image = vision.Image(content=image_content)
+
+        # GCSパスから画像を指定
+        image = vision.Image()
+        image.source.image_uri = gcs_path
 
         # オブジェクト検出実行
         response = client.object_localization(image=image)
@@ -126,243 +206,3 @@ def analyze_image_objects_for_classification(image_content: Union[bytes, str]) -
             'message': f'Analysis failed: {str(e)}',
             'estimated_data': {}
         }
-
-
-class VisionAPIService:
-    """Google Cloud Vision API を使用した画像解析サービス"""
-
-    def __init__(self):
-        self.client = vision.ImageAnnotatorClient()
-
-    @staticmethod
-    def run_quickstart() -> Dict:
-        """Provides a quick start example for Cloud Vision."""
-        try:
-            # Instantiates a client
-            client = vision.ImageAnnotatorClient()
-
-            # The URI of the image file to annotate
-            file_uri = "gs://cloud-samples-data/vision/label/wakeupcat.jpg"
-
-            image = vision.Image()
-            image.source.image_uri = file_uri
-
-            # Performs label detection on the image file
-            response = client.label_detection(image=image)
-            labels = response.label_annotations
-
-            if response.error.message:
-                return {
-                    'success': False,
-                    'error': f'Vision API Error: {response.error.message}'
-                }
-
-            result_labels = []
-            print("Labels:")
-            for label in labels:
-                print(f"- {label.description} (confidence: {label.score:.2f})")
-                result_labels.append({
-                    'description': label.description,
-                    'score': label.score
-                })
-
-            return {
-                'success': True,
-                'labels': result_labels,
-                'message': f'Found {len(result_labels)} labels'
-            }
-
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
-
-    def analyze_image(self, image_content: Union[bytes, str],
-                      analysis_types: Optional[List[str]] = None) -> Dict:
-        """
-        画像を解析する
-
-        Args:
-            image_content: 画像のバイナリデータまたはbase64文字列
-            analysis_types: 実行する解析のタイプリスト
-                          ['labels', 'text', 'faces', 'objects', 'landmarks']
-
-        Returns:
-            解析結果の辞書
-        """
-        if analysis_types is None:
-            analysis_types = ['labels', 'text']
-
-        try:
-            # 画像データの準備
-            if isinstance(image_content, str):
-                # base64文字列の場合、data URLプレフィックスを除去
-                if image_content.startswith('data:image/'):
-                    # data:image/jpeg;base64,... 形式の場合
-                    image_content = image_content.split(',', 1)[1]
-
-                try:
-                    image_content = base64.b64decode(image_content)
-                except Exception as decode_error:
-                    raise Exception(
-                        f"Invalid base64 data: {str(decode_error)}")
-
-            # 画像データのサイズチェック
-            if len(image_content) == 0:
-                raise Exception("Empty image data")
-
-            if len(image_content) > 20 * 1024 * 1024:  # 20MB制限
-                raise Exception("Image data too large (max 20MB)")
-
-            image = vision.Image(content=image_content)
-
-            results = {}
-
-            # ラベル検出
-            if 'labels' in analysis_types:
-                results['labels'] = self._detect_labels(image)
-
-            # テキスト検出
-            if 'text' in analysis_types:
-                results['text'] = self._detect_text(image)
-
-            # 顔検出
-            if 'faces' in analysis_types:
-                results['faces'] = self._detect_faces(image)
-
-            # オブジェクト検出
-            if 'objects' in analysis_types:
-                results['objects'] = self._detect_objects(image)
-
-            # ランドマーク検出
-            if 'landmarks' in analysis_types:
-                results['landmarks'] = self._detect_landmarks(image)
-
-            return {
-                'success': True,
-                'results': results
-            }
-
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
-
-    def _detect_labels(self, image: vision.Image) -> List[Dict]:
-        """ラベル検出"""
-        response = self.client.label_detection(image=image)
-        labels = response.label_annotations
-
-        if response.error.message:
-            raise Exception(f'{response.error.message}')
-
-        return [{
-            'description': label.description,
-            'score': label.score,
-            'confidence': label.score
-        } for label in labels]
-
-    def _detect_text(self, image: vision.Image) -> Dict:
-        """テキスト検出"""
-        response = self.client.text_detection(image=image)
-        texts = response.text_annotations
-
-        if response.error.message:
-            raise Exception(f'{response.error.message}')
-
-        if texts:
-            # 最初の要素は全体のテキスト
-            full_text = texts[0].description
-            # 残りは個別の文字/単語
-            words = [{
-                'text': text.description,
-                'bounds': {
-                    'vertices': [
-                        {'x': vertex.x, 'y': vertex.y}
-                        for vertex in text.bounding_poly.vertices
-                    ]
-                }
-            } for text in texts[1:]]
-
-            return {
-                'full_text': full_text,
-                'words': words
-            }
-
-        return {'full_text': '', 'words': []}
-
-    def _detect_faces(self, image: vision.Image) -> List[Dict]:
-        """顔検出"""
-        response = self.client.face_detection(image=image)
-        faces = response.face_annotations
-
-        if response.error.message:
-            raise Exception(f'{response.error.message}')
-
-        return [{
-            'confidence': face.detection_confidence,
-            'joy_likelihood': face.joy_likelihood.name,
-            'sorrow_likelihood': face.sorrow_likelihood.name,
-            'anger_likelihood': face.anger_likelihood.name,
-            'surprise_likelihood': face.surprise_likelihood.name,
-            'bounds': {
-                'vertices': [
-                    {'x': vertex.x, 'y': vertex.y}
-                    for vertex in face.bounding_poly.vertices
-                ]
-            }
-        } for face in faces]
-
-    def _detect_objects(self, image: vision.Image) -> List[Dict]:
-        """オブジェクト検出"""
-        response = self.client.object_localization(image=image)
-        objects = response.localized_object_annotations
-
-        if response.error.message:
-            raise Exception(f'{response.error.message}')
-
-        return [{
-            'name': obj.name,
-            'score': obj.score,
-            'bounds': {
-                'vertices': [
-                    {'x': vertex.x, 'y': vertex.y}
-                    for vertex in obj.bounding_poly.normalized_vertices
-                ]
-            }
-        } for obj in objects]
-
-    def _detect_landmarks(self, image: vision.Image) -> List[Dict]:
-        """ランドマーク検出"""
-        response = self.client.landmark_detection(image=image)
-        landmarks = response.landmark_annotations
-
-        if response.error.message:
-            raise Exception(f'{response.error.message}')
-
-        return [{
-            'description': landmark.description,
-            'score': landmark.score,
-            'locations': [{
-                'latitude': location.lat_lng.latitude,
-                'longitude': location.lat_lng.longitude
-            } for location in landmark.locations]
-        } for landmark in landmarks]
-
-
-def analyze_image_with_vision_api(image_content: Union[bytes, str],
-                                  analysis_types: Optional[List[str]] = None) -> Dict:
-    """
-    Vision APIを使用して画像を解析する便利関数
-
-    Args:
-        image_content: 画像のバイナリデータまたはbase64文字列
-        analysis_types: 実行する解析のタイプリスト
-
-    Returns:
-        解析結果の辞書
-    """
-    service = VisionAPIService()
-    return service.analyze_image(image_content, analysis_types)
