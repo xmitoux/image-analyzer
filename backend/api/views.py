@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import AiAnalysisLog
-from .services import VisionAPIService, analyze_image_with_vision_api
+from .services import analyze_image_objects_for_classification
 
 # GCP Functions URL (環境変数から取得)
 MOCK_AI_ANALYSIS_API_URL = os.getenv('MOCK_AI_ANALYSIS_API_URL')
@@ -29,284 +29,140 @@ def hello_world(request):
     })
 
 
-@api_view(['GET'])
-def test_vision_quickstart(request):
-    """Google Cloud Vision API接続テスト（公式サンプル）"""
-    try:
-        print("🔍 Running Vision API quickstart test...")
-        result = VisionAPIService.run_quickstart()
-
-        if result['success']:
-            return Response({
-                'success': True,
-                'message': 'Vision API connection successful!',
-                'result': result
-            })
-        else:
-            return Response({
-                'success': False,
-                'message': f'Vision API test failed: {result["error"]}',
-                'result': result
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Quickstart test failed: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 @api_view(['POST'])
-def test_base64_image(request):
-    """base64画像データのテスト用エンドポイント"""
-    try:
-        image_data = request.data.get('image_data')
-
-        if not image_data:
-            return Response({
-                'success': False,
-                'message': 'image_data is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        print(f"🔍 Received image_data length: {len(image_data)}")
-        print(f"🔍 Image data starts with: {image_data[:50]}...")
-
-        # データURL形式の確認
-        if image_data.startswith('data:image/'):
-            print("📷 Detected data URL format")
-            image_data = image_data.split(',', 1)[1]
-            print(f"📷 After removing data URL prefix: {len(image_data)} chars")
-
-        try:
-            # base64デコードテスト
-            decoded_data = base64.b64decode(image_data)
-            print(
-                f"✅ Successfully decoded base64, size: {len(decoded_data)} bytes")
-
-            # 画像ヘッダーの確認
-            if decoded_data.startswith(b'\xff\xd8\xff'):
-                print("📷 Detected JPEG format")
-            elif decoded_data.startswith(b'\x89PNG'):
-                print("📷 Detected PNG format")
-            elif decoded_data.startswith(b'GIF'):
-                print("📷 Detected GIF format")
-            else:
-                print(f"❓ Unknown format, starts with: {decoded_data[:10]}")
-
-            # Vision APIで解析
-            service = VisionAPIService()
-            result = service.analyze_image(decoded_data, ['labels'])
-
-            return Response({
-                'success': True,
-                'message': 'Base64 image processing test completed',
-                'debug_info': {
-                    'original_length': len(request.data.get('image_data')),
-                    'processed_length': len(image_data),
-                    'decoded_size': len(decoded_data)
-                },
-                'result': result
-            })
-
-        except Exception as decode_error:
-            return Response({
-                'success': False,
-                'message': f'Base64 decode error: {str(decode_error)}',
-                'debug_info': {
-                    'image_data_length': len(image_data),
-                    'starts_with': image_data[:20] if len(image_data) > 20 else image_data
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Test failed: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-def analyze_image_vision_api(request):
-    """Google Cloud Vision APIを使用した画像解析"""
+def analyze_image(request):
     request_timestamp = timezone.now()
 
-    # リクエストデータの取得
-    image_data = request.data.get('image_data')  # base64エンコードされた画像データ
-    image_path = request.data.get('image_path')  # 画像パス（ローカルファイルの場合）
-    analysis_types = request.data.get('analysis_types', ['labels', 'text'])
+    # リクエストの画像データ取得（image_pathまたはimage_dataのどちらでも対応）
+    image_path = request.data.get('image_path')
+    image_data = request.data.get('image_data')
 
-    if not image_data and not image_path:
+    if not image_path and not image_data:
         return Response({
             'success': False,
-            'message': 'image_data or image_path is required'
+            'message': 'image_path or image_data is required'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         # 画像データの準備
         if image_path:
-            # ローカルファイルパスの場合
-            with open(image_path, 'rb') as image_file:
-                image_content = image_file.read()
+            print(f"🔍 Analyzing image from path: {image_path}")
+            image_content = image_path  # ファイルパスはそのまま渡す
         else:
-            # base64データの場合
+            print(
+                f"🔍 Analyzing image from base64 data (length: {len(image_data)})")
             image_content = image_data
 
-        print(f"🔍 Analyzing image with Vision API...")
-
-        # Vision APIで解析
-        analysis_result = analyze_image_with_vision_api(
-            image_content=image_content,
-            analysis_types=analysis_types
-        )
+        # 環境に応じたAPI呼び出し
+        analysis_result = call_mock_ai_analysis_api(image_content)
 
         response_timestamp = timezone.now()
         processing_time_ms = int(
             (response_timestamp - request_timestamp).total_seconds() * 1000)
 
-        # DB保存処理
-        analysis_log = AiAnalysisLog.objects.create(
-            image_path=image_path or 'base64_data',
-            success=analysis_result['success'],
-            message='Vision API Analysis',
-            classification=None,  # 一時的にNullに設定（後で数値マッピング機能を実装予定）
-            confidence=_extract_top_confidence(
-                analysis_result) if analysis_result['success'] else None,
-            request_timestamp=request_timestamp,
-            response_timestamp=response_timestamp
-        )
+        print(f"✅ Analysis result: {analysis_result}")
 
-        if analysis_result['success']:
+        # DB保存処理
+        try:
+            analysis_log = AiAnalysisLog.objects.create(
+                image_path=image_path or 'base64_data',
+                success=analysis_result['success'],
+                message=analysis_result['message'],
+                classification=analysis_result['estimated_data'].get(
+                    'class') if analysis_result['success'] else None,
+                confidence=analysis_result['estimated_data'].get(
+                    'confidence') if analysis_result['success'] else None,
+                request_timestamp=request_timestamp,
+                response_timestamp=response_timestamp
+            )
+
+            print(f"💾 Saved to DB with ID: {analysis_log.id}")
+
+            if analysis_result['success']:
+                return Response({
+                    'id': analysis_log.id,
+                    'success': True,
+                    'message': 'success',
+                    'estimated_data': {
+                        'class': analysis_result['estimated_data']['class'],
+                        'confidence': analysis_result['estimated_data']['confidence']
+                    }
+                })
+            else:
+                return Response({
+                    'id': analysis_log.id,
+                    'success': False,
+                    'message': analysis_result['message'],
+                    'estimated_data': {}
+                })
+
+        except Exception as e:
+            print(f"💥 DB Save Error: {str(e)}")
             return Response({
-                'id': analysis_log.id,
-                'success': True,
-                'message': 'Vision API analysis completed',
-                'result': {
-                    'analysis_results': analysis_result['results'],
-                    'top_label': _extract_top_label(analysis_result),
-                    'top_confidence': _extract_top_confidence(analysis_result),
-                    'processing_time_ms': processing_time_ms
-                }
-            })
-        else:
-            return Response({
-                'id': analysis_log.id,
                 'success': False,
-                'message': f'Vision API analysis failed: {analysis_result.get("error", "Unknown error")}',
-                'processing_time_ms': processing_time_ms
+                'message': f'Database error: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    except FileNotFoundError:
-        return Response({
-            'success': False,
-            'message': f'Image file not found: {image_path}'
-        }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"💥 Analysis Error: {str(e)}")
         return Response({
             'success': False,
             'message': f'Analysis failed: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def _extract_top_label(analysis_result: Dict[str, Any]) -> str:
-    """解析結果から最上位のラベルを抽出"""
-    results = analysis_result.get('results', {})
-    labels = results.get('labels', [])
-    if labels:
-        return labels[0].get('description', 'Unknown')
-    return 'No labels detected'
-
-
-def _extract_top_confidence(analysis_result: Dict[str, Any]) -> float:
-    """解析結果から最上位のラベルの信頼度を抽出"""
-    results = analysis_result.get('results', {})
-    labels = results.get('labels', [])
-    if labels:
-        return labels[0].get('confidence', 0.0)
-    return 0.0
-
-
-@api_view(['POST'])
-def analyze_image(request):
-    request_timestamp = timezone.now()
-
-    # リクエストの画像パス取得
-    image_path = request.data.get('image_path')
-
-    if not image_path:
-        return Response({
-            'success': False,
-            'message': 'image_path is required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    print(f"🔍 Analyzing image: {image_path}")
-
-    # 環境に応じたAPI呼び出し
-    analysis_result = call_mock_ai_analysis_api(image_path)
-
-    response_timestamp = timezone.now()
-    processing_time_ms = int(
-        (response_timestamp - request_timestamp).total_seconds() * 1000)
-
-    print(f"✅ Analysis result: {analysis_result}")
-
-    # DB保存処理
-    try:
-        analysis_log = AiAnalysisLog.objects.create(
-            image_path=image_path,
-            success=analysis_result['success'],
-            message=analysis_result['message'],
-            classification=analysis_result['estimated_data'].get(
-                'class') if analysis_result['success'] else None,
-            confidence=analysis_result['estimated_data'].get(
-                'confidence') if analysis_result['success'] else None,
-            request_timestamp=request_timestamp,
-            response_timestamp=response_timestamp
-        )
-
-        print(f"💾 Saved to DB with ID: {analysis_log.id}")
-
-        if analysis_result['success']:
-            return Response({
-                'id': analysis_log.id,
-                'success': True,
-                'message': 'Analysis completed',
-                'result': {
-                    'class': analysis_result['estimated_data']['class'],
-                    'confidence': analysis_result['estimated_data']['confidence'],
-                    'processing_time_ms': processing_time_ms
-                }
-            })
-        else:
-            return Response({
-                'id': analysis_log.id,
-                'success': False,
-                'message': analysis_result['message'],
-                'result': {
-                    'processing_time_ms': processing_time_ms
-                }
-            })
-
-    except Exception as e:
-        print(f"💥 DB Save Error: {str(e)}")
-        return Response({
-            'success': False,
-            'message': f'Database error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-def call_mock_ai_analysis_api(image_path):
+def call_mock_ai_analysis_api(image_content):
     """
     環境に応じてAPI呼び出し先を切り替え
     """
-    if MOCK_AI_ANALYSIS_API_URL:
+    # Google Cloud認証情報が設定されている場合はVision APIを使用
+    if os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+        print("🌤️ Using Google Cloud Vision API")
+        return call_vision_api_analysis(image_content)
+    elif MOCK_AI_ANALYSIS_API_URL:
         print("🌤️ Using GCP Cloud Functions")
-        return call_mock_ai_analysis_api_gcp(image_path)
+        return call_mock_ai_analysis_api_gcp(image_content)
     else:
         print("🏠 Using local mock")
-        return call_mock_ai_analysis_api_local(image_path)
+        return call_mock_ai_analysis_api_local(image_content)
 
 
-def call_mock_ai_analysis_api_local(image_path):
+def call_vision_api_analysis(image_content):
+    """
+    Google Cloud Vision APIを使用した画像解析
+    """
+    # ファイルパスの場合は読み込み（有効なファイルパスかチェック）
+    if isinstance(image_content, str) and not image_content.startswith('data:'):
+        # ファイルパスの長さと有効性をチェック
+        if len(image_content) < 255 and not any(char in image_content for char in '=+/'):
+            # 一般的なファイル拡張子を持つかチェック
+            if image_content.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                try:
+                    with open(image_content, 'rb') as image_file:
+                        image_content = image_file.read()
+                except FileNotFoundError:
+                    return {
+                        'success': False,
+                        'message': f'Image file not found: {image_content}',
+                        'estimated_data': {}
+                    }
+                except Exception as e:
+                    return {
+                        'success': False,
+                        'message': f'Error reading file: {str(e)}',
+                        'estimated_data': {}
+                    }
+            else:
+                # ファイル拡張子がない場合、base64データとして扱う
+                pass
+        else:
+            # 長いデータやbase64らしい文字を含む場合、base64データとして扱う
+            pass
+
+    return analyze_image_objects_for_classification(image_content)
+
+
+def call_mock_ai_analysis_api_local(image_content):
     """
     ローカル開発用のモック処理
     """
@@ -331,16 +187,23 @@ def call_mock_ai_analysis_api_local(image_path):
         }
 
 
-def call_mock_ai_analysis_api_gcp(image_path):
+def call_mock_ai_analysis_api_gcp(image_content):
     """
     GCP Cloud Functions API呼び出し
     """
     try:
+        # ファイルパスの場合はそのまま送信（既存の仕様に合わせる）
+        if isinstance(image_content, str) and not image_content.startswith('data:'):
+            request_data = {'image_path': image_content}
+        else:
+            # base64データの場合は適切に処理
+            request_data = {'image_data': image_content}
+
         print(f"🌤️ Calling GCP Functions: {MOCK_AI_ANALYSIS_API_URL}")
 
         response = requests.post(
             MOCK_AI_ANALYSIS_API_URL,
-            json={'image_path': image_path},
+            json=request_data,
             headers={'Content-Type': 'application/json'},
             timeout=30
         )

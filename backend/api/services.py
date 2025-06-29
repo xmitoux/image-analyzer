@@ -3,10 +3,129 @@ Google Cloud Vision API サービス
 """
 import base64
 import io
+import os
 from typing import Dict, List, Optional, Union
 
 from django.conf import settings
 from google.cloud import vision
+
+
+def analyze_image_objects_for_classification(image_content: Union[bytes, str]) -> Dict:
+    """
+    Vision APIを使用してオブジェクト検出を行い、最上位の結果をラベルマスタと照合してclassificationを返す
+
+    Args:
+        image_content: 画像のバイナリデータまたはbase64文字列
+
+    Returns:
+        {
+            'success': bool,
+            'message': str,
+            'estimated_data': {
+                'class': int,
+                'confidence': float
+            }
+        }
+    """
+    try:
+        from .models import ObjectLabel
+
+        # Google Cloud認証情報が設定されているかチェック
+        if not os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+            return {
+                'success': False,
+                'message': 'Google Cloud credentials not configured',
+                'estimated_data': {}
+            }
+
+        # 画像データの準備
+        if isinstance(image_content, str):
+            # data URL形式の場合、プレフィックスを除去
+            if image_content.startswith('data:image/'):
+                image_content = image_content.split(',', 1)[1]
+
+            try:
+                image_content = base64.b64decode(image_content)
+            except Exception as decode_error:
+                return {
+                    'success': False,
+                    'message': f'Invalid base64 data: {str(decode_error)}',
+                    'estimated_data': {}
+                }
+
+        # 画像データのサイズチェック
+        if len(image_content) == 0:
+            return {
+                'success': False,
+                'message': 'Empty image data',
+                'estimated_data': {}
+            }
+
+        if len(image_content) > 20 * 1024 * 1024:  # 20MB制限
+            return {
+                'success': False,
+                'message': 'Image data too large (max 20MB)',
+                'estimated_data': {}
+            }
+
+        # Vision APIクライアント作成
+        client = vision.ImageAnnotatorClient()
+        image = vision.Image(content=image_content)
+
+        # オブジェクト検出実行
+        response = client.object_localization(image=image)
+        objects = response.localized_object_annotations
+
+        if response.error.message:
+            return {
+                'success': False,
+                'message': f'Vision API Error: {response.error.message}',
+                'estimated_data': {}
+            }
+
+        if not objects:
+            return {
+                'success': False,
+                'message': 'No objects detected',
+                'estimated_data': {}
+            }
+
+        # スコアが最大のオブジェクトを取得
+        top_object = max(objects, key=lambda obj: obj.score)
+        object_name = top_object.name.lower()  # 小文字で統一
+        confidence = top_object.score
+
+        print(
+            f"🔍 Top detected object: {object_name} (confidence: {confidence:.4f})")
+
+        # ラベルマスタでオブジェクト名を検索・登録
+        object_label, created = ObjectLabel.objects.get_or_create(
+            name=object_name,
+            defaults={'name': object_name}
+        )
+
+        if created:
+            print(
+                f"🆕 New label registered: {object_name} (ID: {object_label.id})")
+        else:
+            print(
+                f"🔍 Existing label found: {object_name} (ID: {object_label.id})")
+
+        return {
+            'success': True,
+            'message': 'success',
+            'estimated_data': {
+                'class': object_label.id,
+                'confidence': round(confidence, 4)
+            }
+        }
+
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Analysis failed: {str(e)}',
+            'estimated_data': {}
+        }
 
 
 class VisionAPIService:
