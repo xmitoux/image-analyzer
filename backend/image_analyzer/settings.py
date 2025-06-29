@@ -37,7 +37,18 @@ else:
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY is required in production")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.railway.app',  # Railway domains
+    '.up.railway.app',  # Railway custom domains
+]
+
+# Railway環境でのALLOWED_HOSTSの動的設定
+if 'RAILWAY_ENVIRONMENT' in os.environ:
+    railway_url = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+    if railway_url:
+        ALLOWED_HOSTS.append(railway_url)
 
 
 # Application definition
@@ -88,16 +99,34 @@ WSGI_APPLICATION = "image_analyzer.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+# Railway環境またはDATABASE_URLが設定されている場合
+if 'DATABASE_URL' in os.environ:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+# Railway環境だがDATABASE_URLが設定されていない場合（デバッグ用）
+elif 'RAILWAY_ENVIRONMENT' in os.environ:
+    raise ValueError(
+        "DATABASE_URL is required in Railway environment. "
+        "Make sure PostgreSQL service is added and connected."
+    )
+else:
+    # ローカル開発環境
+    DATABASES = {
+        "default": {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'HOST': os.getenv('DB_HOST'),
+            'PORT': os.getenv('DB_PORT'),
+        }
+    }
 
 
 # Password validation
@@ -135,6 +164,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Railway対応
+if 'RAILWAY_ENVIRONMENT' in os.environ:
+    # Railway環境では静的ファイルをWhitenoiseで配信
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -142,8 +178,24 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Google Cloud Platform 設定
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
+
+# Railway環境ではJSONでサービスアカウントキーを設定
+if 'RAILWAY_ENVIRONMENT' in os.environ and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
+    import json
+    import tempfile
+
+    # 環境変数からJSONを読み込み、一時ファイルに保存
+    service_account_info = json.loads(
+        os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON'))
+
+    # 一時ファイルを作成してパスを設定
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        json.dump(service_account_info, f)
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f.name
+
+# 最終的なGOOGLE_APPLICATION_CREDENTIALS取得（Railway環境で設定された後）
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 # 本番環境でのバリデーション
 if not DEBUG and not GOOGLE_APPLICATION_CREDENTIALS:
