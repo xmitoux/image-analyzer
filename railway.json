@@ -4,7 +4,7 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "python backend/manage.py migrate && python backend/manage.py runserver 0.0.0.0:$PORT",
+        "startCommand": "cd backend && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 image_analyzer.wsgi:application",
         "healthcheckPath": "/api/hello/"
     }
 }
