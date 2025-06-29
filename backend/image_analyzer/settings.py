@@ -99,12 +99,22 @@ WSGI_APPLICATION = "image_analyzer.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Railway環境の場合はDATABASE_URLを使用
+# Railway環境またはDATABASE_URLが設定されている場合
 if 'DATABASE_URL' in os.environ:
     import dj_database_url
     DATABASES = {
-        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+        'default': dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
+# Railway環境だがDATABASE_URLが設定されていない場合（デバッグ用）
+elif 'RAILWAY_ENVIRONMENT' in os.environ:
+    raise ValueError(
+        "DATABASE_URL is required in Railway environment. "
+        "Make sure PostgreSQL service is added and connected."
+    )
 else:
     # ローカル開発環境
     DATABASES = {
