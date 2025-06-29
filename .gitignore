@@ -322,3 +322,6 @@ logs/
 # Docker
 .dockerignore
 docker-compose.override.yml
+
+# GCP
+credentials/

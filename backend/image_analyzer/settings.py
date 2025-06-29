@@ -140,3 +140,56 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Google Cloud Platform 設定
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
+
+# 本番環境でのバリデーション
+if not DEBUG and not GOOGLE_APPLICATION_CREDENTIALS:
+    raise ValueError(
+        "GOOGLE_APPLICATION_CREDENTIALS must be set in production")
+
+if not DEBUG and not GCS_BUCKET_NAME:
+    raise ValueError("GCS_BUCKET_NAME must be set in production")
+
+# CORS設定
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # 開発環境では全てのオリジンを許可
+
+if not DEBUG:
+    # 本番環境では特定のオリジンのみ許可
+    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+else:
+    # 開発環境用のデフォルト設定
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# ファイルアップロード設定
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+
+# REST Framework設定
+REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
+}
