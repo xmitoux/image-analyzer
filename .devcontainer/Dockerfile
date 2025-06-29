@@ -19,8 +19,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # Update npm to latest
 RUN npm install -g npm@latest
 
-# Install Python requirements
-COPY backend/requirements.txt ./
-RUN pip install -r requirements.txt
+# Note: Project dependencies are installed via postCreateCommand in devcontainer.json
+# This keeps the Docker image lean and allows for faster iteration during development
 
 WORKDIR /workspace
