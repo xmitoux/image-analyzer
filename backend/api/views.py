@@ -2,6 +2,7 @@ import random
 import time
 from typing import Any, Dict
 
+from django.core.paginator import Paginator
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
@@ -9,6 +10,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from .models import AiAnalysisLog
+from .serializers import AiAnalysisLogListSerializer
 from .services import analyze_image_from_gcs_path, upload_image_to_gcs
 
 
@@ -170,6 +172,79 @@ def analyze_image_mock(request):
         return Response({
             'success': False,
             'message': f'Analysis failed: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_analysis_logs(request):
+    """
+    AI分析ログの一覧取得API
+
+    Query Parameters:
+    - page: ページ番号 (デフォルト: 1)
+    - page_size: 1ページあたりの件数 (デフォルト: 20, 最大: 50)
+    - classification: 分類クラスフィルタ
+    """
+    try:
+        # クエリパラメータの取得
+        page = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 20)), 50)  # 最大50件
+        classification_filter = request.GET.get('classification')
+
+        # ベースクエリセット
+        queryset = AiAnalysisLog.objects.all()
+
+        # 分類クラスフィルタリング
+        if classification_filter:
+            try:
+                classification_value = int(classification_filter)
+                queryset = queryset.filter(classification=classification_value)
+            except ValueError:
+                pass
+
+        # 最新順でソート
+        queryset = queryset.order_by('-created_at')
+
+        # ページネーション
+        paginator = Paginator(queryset, page_size)
+
+        if page > paginator.num_pages and paginator.num_pages > 0:
+            return Response({
+                'success': False,
+                'message': f'Page {page} does not exist. Total pages: {paginator.num_pages}'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        page_obj = paginator.get_page(page)
+
+        # シリアライズ
+        serializer = AiAnalysisLogListSerializer(page_obj, many=True)
+
+        return Response({
+            'success': True,
+            'data': {
+                'logs': serializer.data,
+                'pagination': {
+                    'current_page': page,
+                    'total_pages': paginator.num_pages,
+                    'total_count': paginator.count,
+                    'page_size': page_size,
+                    'has_next': page_obj.has_next(),
+                    'has_previous': page_obj.has_previous(),
+                }
+            }
+        })
+
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'message': f'Invalid parameter: {str(e)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        print(f"💥 Get logs error: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Failed to get logs: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
