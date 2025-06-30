@@ -7,15 +7,18 @@ services:
       - .:/workspace
     ports:
       - "8000:8000" # Django development server
+      - "3000:3000" # Next.js development server
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - PIP_NO_CACHE_DIR=1
       - PIP_DISABLE_PIP_VERSION_CHECK=1
       - DJANGO_SETTINGS_MODULE=image_analyzer.settings
+      - NODE_ENV=development
     depends_on:
       - postgres
     command: sleep infinity # Keep the container running for development
+    init: true
 
   postgres:
     image: postgres:17
@@ -30,3 +33,4 @@ services:
 
 volumes:
   postgres_data:
+  node_modules:

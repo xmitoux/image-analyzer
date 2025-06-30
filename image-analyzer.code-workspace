@@ -1,0 +1,16 @@
+{
+    "folders": [
+        {
+            "name": "Backend (Django)",
+            "path": "./backend"
+        },
+        {
+            "name": "Frontend (Next.js)",
+            "path": "./frontend"
+        },
+        {
+            "name": "Root",
+            "path": "."
+        }
+    ]
+}
