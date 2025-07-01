@@ -1,6 +1,7 @@
 'use client';
 
 import { LogCard } from '@/components/LogCard';
+import { getClassificationColor, getClassificationName } from '@/lib/utils';
 import { ApiResponse } from '@/types/analysis';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
@@ -48,23 +49,26 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
 
                 {/* 統計情報 */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between">
                         <div className="text-sm text-gray-600">
-                            フィルター:
+                            {currentClassification ? (
+                                <div className="flex items-center gap-2">
+                                    <span>フィルター中:</span>
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getClassificationColor(Number(currentClassification))}`}>
+                                        🏷️ {getClassificationName(Number(currentClassification))}
+                                    </span>
+                                    <button
+                                        onClick={() => handleClassificationChange('')}
+                                        className="text-blue-600 hover:text-blue-800 text-xs underline"
+                                    >
+                                        フィルターをクリア
+                                    </button>
+                                </div>
+                            ) : (
+                                <span>分類タグをクリックして絞り込みができます</span>
+                            )}
                         </div>
-                        <select
-                            className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                            value={currentClassification}
-                            onChange={(e) => handleClassificationChange(e.target.value)}
-                        >
-                            <option value="">全ての分類</option>
-                            <option value="1">ラベル ID: 1</option>
-                            <option value="2">ラベル ID: 2</option>
-                            <option value="3">ラベル ID: 3</option>
-                            <option value="4">ラベル ID: 4</option>
-                            <option value="5">ラベル ID: 5</option>
-                        </select>
-                        <div className="text-sm text-gray-500 ml-auto">
+                        <div className="text-sm text-gray-500">
                             総件数: {pagination.total_count}件
                             <span className="ml-2">
                                 ({((pagination.current_page - 1) * pagination.page_size) + 1} - {Math.min(pagination.current_page * pagination.page_size, pagination.total_count)}件目を表示)
@@ -77,7 +81,11 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                 {logs.length > 0 ? (
                     <div className="space-y-4">
                         {logs.map((log) => (
-                            <LogCard key={log.id} log={log} />
+                            <LogCard
+                                key={log.id}
+                                log={log}
+                                onClassificationClick={(classification) => handleClassificationChange(classification.toString())}
+                            />
                         ))}
                     </div>
                 ) : (
@@ -93,8 +101,8 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                     <div className="flex items-center gap-3">
                         <button
                             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_previous
-                                    ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
-                                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                                : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
                                 }`}
                             disabled={!pagination.has_previous}
                             onClick={() => handlePageChange(pagination.current_page - 1)}
@@ -120,8 +128,8 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                                     <button
                                         key={pageNum}
                                         className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${pageNum === pagination.current_page
-                                                ? 'bg-blue-600 text-white border border-blue-600'
-                                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                                            ? 'bg-blue-600 text-white border border-blue-600'
+                                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
                                             }`}
                                         onClick={() => handlePageChange(pageNum)}
                                     >
@@ -133,8 +141,8 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
 
                         <button
                             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_next
-                                    ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
-                                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                                : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
                                 }`}
                             disabled={!pagination.has_next}
                             onClick={() => handlePageChange(pagination.current_page + 1)}

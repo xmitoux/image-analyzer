@@ -3,9 +3,10 @@ import { AnalysisLog } from '@/types/analysis';
 
 type LogCardProps = {
     log: AnalysisLog;
+    onClassificationClick?: (classification: number) => void;
 }
 
-export function LogCard({ log }: LogCardProps) {
+export function LogCard({ log, onClassificationClick }: LogCardProps) {
     const confidencePercentage = Math.round(parseFloat(log.confidence) * 100);
 
     return (
@@ -43,9 +44,13 @@ export function LogCard({ log }: LogCardProps) {
 
                             {/* 分類バッジ */}
                             {log.success && log.classification && (
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getClassificationColor(log.classification)}`}>
-                                    {getClassificationName(log.classification)}
-                                </span>
+                                <button
+                                    onClick={() => onClassificationClick?.(log.classification!)}
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border ${getClassificationColor(log.classification)}`}
+                                    title={`分類「${getClassificationName(log.classification)}」でフィルターする`}
+                                >
+                                    🏷️ {getClassificationName(log.classification)}
+                                </button>
                             )}
                         </div>
 
@@ -67,9 +72,13 @@ export function LogCard({ log }: LogCardProps) {
 
                         {/* 分類バッジ */}
                         {log.success && log.classification && (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getClassificationColor(log.classification)}`}>
-                                {getClassificationName(log.classification)}
-                            </span>
+                            <button
+                                onClick={() => onClassificationClick?.(log.classification!)}
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border ${getClassificationColor(log.classification)}`}
+                                title={`分類「${getClassificationName(log.classification)}」でフィルターする`}
+                            >
+                                🏷️ {getClassificationName(log.classification)}
+                            </button>
                         )}
                     </div>
 
