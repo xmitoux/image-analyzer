@@ -1,6 +1,7 @@
-import { formatAbsoluteTime, getClassificationColor } from '@/lib/utils';
+import { getClassificationColor } from '@/lib/utils';
 import { AnalysisLog } from '@/types/analysis';
 import Image from 'next/image';
+import { ClientTime } from './ClientTime';
 
 type LogCardProps = {
     log: AnalysisLog;
@@ -23,6 +24,7 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                                 width={128}
                                 height={96}
                                 className="w-full h-full object-cover rounded-lg"
+                                priority
                                 onError={(e) => {
                                     // 画像読み込みエラー時のフォールバック
                                     const target = e.target as HTMLImageElement;
@@ -42,9 +44,10 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                 <div className="flex-1 min-w-0">
                     {/* 日時 - スマホ時のみ上に表示 */}
                     <div className="flex justify-start mb-2 md:hidden">
-                        <span className="text-sm text-gray-500">
-                            {formatAbsoluteTime(log.created_at)}
-                        </span>
+                        <ClientTime
+                            dateString={log.created_at}
+                            className="text-sm text-gray-500"
+                        />
                     </div>
 
                     {/* PC表示用のレイアウト */}
@@ -71,9 +74,10 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                         </div>
 
                         {/* 日時 - PC時は右側に表示 */}
-                        <span className="text-sm text-gray-500">
-                            {formatAbsoluteTime(log.created_at)}
-                        </span>
+                        <ClientTime
+                            dateString={log.created_at}
+                            className="text-sm text-gray-500"
+                        />
                     </div>
 
                     {/* スマホ表示用のレイアウト */}
