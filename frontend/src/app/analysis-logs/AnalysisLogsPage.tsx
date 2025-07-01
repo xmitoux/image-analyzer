@@ -1,5 +1,9 @@
+'use client';
+
 import { LogCard } from '@/components/LogCard';
 import { ApiResponse } from '@/types/analysis';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback } from 'react';
 
 type AnalysisLogsPageProps = {
     data: ApiResponse;
@@ -7,6 +11,27 @@ type AnalysisLogsPageProps = {
 
 export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
     const { logs, pagination } = data.data;
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const currentClassification = searchParams.get('classification') || '';
+
+    const handleClassificationChange = useCallback((classification: string) => {
+        const params = new URLSearchParams(searchParams);
+        if (classification) {
+            params.set('classification', classification);
+        } else {
+            params.delete('classification');
+        }
+        params.delete('page'); // フィルター変更時はページを1にリセット
+        router.push(`/analysis-logs?${params.toString()}`);
+    }, [router, searchParams]);
+
+    const handlePageChange = useCallback((page: number) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('page', page.toString());
+        router.push(`/analysis-logs?${params.toString()}`);
+    }, [router, searchParams]);
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -27,7 +52,11 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                         <div className="text-sm text-gray-600">
                             フィルター:
                         </div>
-                        <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                        <select
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                            value={currentClassification}
+                            onChange={(e) => handleClassificationChange(e.target.value)}
+                        >
                             <option value="">全ての分類</option>
                             <option value="1">ラベル ID: 1</option>
                             <option value="2">ラベル ID: 2</option>
@@ -37,6 +66,9 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                         </select>
                         <div className="text-sm text-gray-500 ml-auto">
                             総件数: {pagination.total_count}件
+                            <span className="ml-2">
+                                ({((pagination.current_page - 1) * pagination.page_size) + 1} - {Math.min(pagination.current_page * pagination.page_size, pagination.total_count)}件目を表示)
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -58,19 +90,54 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
 
                 {/* ページネーション情報 */}
                 <div className="mt-8 flex justify-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <button
-                            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_previous
+                                    ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                }`}
                             disabled={!pagination.has_previous}
+                            onClick={() => handlePageChange(pagination.current_page - 1)}
                         >
                             前へ
                         </button>
-                        <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md">
-                            {pagination.current_page} / {pagination.total_pages}
-                        </span>
+
+                        {/* ページ番号表示 */}
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                                let pageNum;
+                                if (pagination.total_pages <= 5) {
+                                    pageNum = i + 1;
+                                } else if (pagination.current_page <= 3) {
+                                    pageNum = i + 1;
+                                } else if (pagination.current_page >= pagination.total_pages - 2) {
+                                    pageNum = pagination.total_pages - 4 + i;
+                                } else {
+                                    pageNum = pagination.current_page - 2 + i;
+                                }
+
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${pageNum === pagination.current_page
+                                                ? 'bg-blue-600 text-white border border-blue-600'
+                                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                                            }`}
+                                        onClick={() => handlePageChange(pageNum)}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
                         <button
-                            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_next
+                                    ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                }`}
                             disabled={!pagination.has_next}
+                            onClick={() => handlePageChange(pagination.current_page + 1)}
                         >
                             次へ
                         </button>
