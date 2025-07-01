@@ -1,7 +1,7 @@
 'use client';
 
 import { LogCard } from '@/components/LogCard';
-import { getClassificationColor, getClassificationName } from '@/lib/utils';
+import { getClassificationColor } from '@/lib/utils';
 import { ApiResponse } from '@/types/analysis';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
@@ -34,6 +34,14 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
         router.push(`/analysis-logs?${params.toString()}`);
     }, [router, searchParams]);
 
+    // 現在のフィルターに対応する分類名を取得
+    const getCurrentClassificationName = useCallback(() => {
+        if (!currentClassification) return '';
+        const classificationId = Number(currentClassification);
+        const matchingLog = logs.find(log => log.classification === classificationId);
+        return matchingLog?.classification_name
+    }, [currentClassification, logs]);
+
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4">
             <div className="max-w-4xl mx-auto">
@@ -55,7 +63,7 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                                 <div className="flex items-center gap-2">
                                     <span>フィルター中:</span>
                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getClassificationColor(Number(currentClassification))}`}>
-                                        🏷️ {getClassificationName(Number(currentClassification))}
+                                        🏷️ {getCurrentClassificationName()}
                                     </span>
                                     <button
                                         onClick={() => handleClassificationChange('')}

@@ -1,4 +1,4 @@
-import { formatAbsoluteTime, getClassificationColor, getClassificationName } from '@/lib/utils';
+import { formatAbsoluteTime, getClassificationColor } from '@/lib/utils';
 import { AnalysisLog } from '@/types/analysis';
 import Image from 'next/image';
 
@@ -63,9 +63,9 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                                 <button
                                     onClick={() => onClassificationClick?.(log.classification!)}
                                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border ${getClassificationColor(log.classification)}`}
-                                    title={`分類「${getClassificationName(log.classification)}」でフィルターする`}
+                                    title={`分類「${log.classification_name}」でフィルターする`}
                                 >
-                                    🏷️ {getClassificationName(log.classification)}
+                                    {log.classification_name}
                                 </button>
                             )}
                         </div>
@@ -91,20 +91,11 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                             <button
                                 onClick={() => onClassificationClick?.(log.classification!)}
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border ${getClassificationColor(log.classification)}`}
-                                title={`分類「${getClassificationName(log.classification)}」でフィルターする`}
+                                title={`分類「${log.classification_name}」でフィルターする`}
                             >
-                                🏷️ {getClassificationName(log.classification)}
+                                {log.classification_name}
                             </button>
                         )}
-                    </div>
-
-                    {/* 画像パス */}
-                    <div className="mb-3">
-                        <p className="text-sm text-gray-600 truncate" title={log.image_path}>
-                            📁 {log.image_path.startsWith('https://')
-                                ? log.image_path.split('/').pop() || log.image_path
-                                : log.image_path}
-                        </p>
                     </div>
 
                     {/* 信頼度プログレスバー */}

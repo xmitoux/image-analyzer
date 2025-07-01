@@ -3,6 +3,7 @@ export type AnalysisLog = {
     image_path: string;
     success: boolean;
     classification: number | null;
+    classification_name?: string | null;
     confidence: string;
     processing_time_ms: number;
     created_at: string;

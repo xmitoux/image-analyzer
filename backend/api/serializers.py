@@ -1,12 +1,13 @@
 from rest_framework import serializers
 
-from .models import AiAnalysisLog
+from .models import AiAnalysisLog, ObjectLabel
 
 
 class AiAnalysisLogListSerializer(serializers.ModelSerializer):
     """AI分析ログ一覧用のシリアライザー"""
 
     processing_time_ms = serializers.SerializerMethodField()
+    classification_name = serializers.SerializerMethodField()
 
     class Meta:
         model = AiAnalysisLog
@@ -15,6 +16,7 @@ class AiAnalysisLogListSerializer(serializers.ModelSerializer):
             'image_path',
             'success',
             'classification',
+            'classification_name',
             'confidence',
             'processing_time_ms',
             'created_at'
@@ -25,4 +27,14 @@ class AiAnalysisLogListSerializer(serializers.ModelSerializer):
         if obj.request_timestamp and obj.response_timestamp:
             delta = obj.response_timestamp - obj.request_timestamp
             return int(delta.total_seconds() * 1000)
+        return None
+
+    def get_classification_name(self, obj):
+        """分類名を取得"""
+        if obj.classification:
+            try:
+                label = ObjectLabel.objects.get(id=obj.classification)
+                return label.name
+            except ObjectLabel.DoesNotExist:
+                return f"ラベル ID: {obj.classification}"
         return None

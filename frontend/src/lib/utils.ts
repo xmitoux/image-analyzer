@@ -10,11 +10,6 @@ export function formatAbsoluteTime(dateString: string): string {
     });
 }
 
-export function getClassificationName(classification: number | null): string {
-    if (!classification) return "未分類";
-    return `ラベル ID: ${classification}`;
-}
-
 export function getClassificationColor(classification: number | null): string {
     if (!classification) return "bg-gray-100 text-gray-800";
 
