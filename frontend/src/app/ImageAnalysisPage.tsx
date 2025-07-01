@@ -68,13 +68,15 @@ export default function ImageAnalysisPage() {
             const formData = new FormData();
             formData.append('image', selectedFile);
 
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiBaseUrl}/api/analyze/`, {
+            // Next.js API Routes経由でバックエンドにアクセス
+            const response = await fetch('/api/analyze', {
                 method: 'POST',
                 body: formData,
             });
 
             if (!response.ok) {
+                const errorData = await response.text();
+                console.error('解析API エラー詳細:', errorData);
                 throw new Error(`HTTP ${response.status}`);
             }
 
