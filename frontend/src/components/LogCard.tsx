@@ -1,5 +1,6 @@
 import { formatAbsoluteTime, getClassificationColor, getClassificationName } from '@/lib/utils';
 import { AnalysisLog } from '@/types/analysis';
+import Image from 'next/image';
 
 type LogCardProps = {
     log: AnalysisLog;
@@ -15,7 +16,22 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                 {/* 画像プレビュー部分 */}
                 <div className="flex-shrink-0">
                     <div className="w-32 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                        <div className="text-center">
+                        {log.image_path && log.image_path.startsWith('https://') ? (
+                            <Image
+                                src={log.image_path}
+                                alt="分析画像"
+                                width={128}
+                                height={96}
+                                className="w-full h-full object-cover rounded-lg"
+                                onError={(e) => {
+                                    // 画像読み込みエラー時のフォールバック
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        ) : null}
+                        <div className={`text-center ${log.image_path && log.image_path.startsWith('https://') ? 'hidden' : ''}`}>
                             <div className="text-4xl">🖼️</div>
                             <div className="text-xs text-gray-500 mt-1">画像</div>
                         </div>
@@ -85,7 +101,9 @@ export function LogCard({ log, onClassificationClick }: LogCardProps) {
                     {/* 画像パス */}
                     <div className="mb-3">
                         <p className="text-sm text-gray-600 truncate" title={log.image_path}>
-                            📁 {log.image_path}
+                            📁 {log.image_path.startsWith('https://')
+                                ? log.image_path.split('/').pop() || log.image_path
+                                : log.image_path}
                         </p>
                     </div>
 

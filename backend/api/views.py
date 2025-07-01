@@ -60,7 +60,7 @@ def analyze_image(request):
 
         # GCSパスからVision API解析を実行
         analysis_result = analyze_image_from_gcs_path(gcs_path)
-        image_path = gcs_path
+        image_path = upload_result['public_url']  # 表示用のpublic_urlを保存
 
         response_timestamp = timezone.now()
         processing_time_ms = int(
