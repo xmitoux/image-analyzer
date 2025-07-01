@@ -2,7 +2,7 @@ import { getAnalysisLogs } from '@/lib/api';
 import AnalysisLogsPage from './AnalysisLogsPage';
 
 type PageProps = {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 // メインページ（サーバーコンポーネント）
