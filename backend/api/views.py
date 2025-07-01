@@ -9,9 +9,20 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import AiAnalysisLog
+from .models import AiAnalysisLog, ObjectLabel
 from .serializers import AiAnalysisLogListSerializer
 from .services import analyze_image_from_gcs_path, upload_image_to_gcs
+
+
+def get_classification_name(classification_id):
+    """分類IDから分類名を取得するヘルパー関数"""
+    if not classification_id:
+        return None
+    try:
+        label = ObjectLabel.objects.get(id=classification_id)
+        return label.name
+    except ObjectLabel.DoesNotExist:
+        return f"ラベル ID: {classification_id}"
 
 
 @api_view(['GET'])
@@ -90,6 +101,7 @@ def analyze_image(request):
                 'message': 'success',
                 'estimated_data': {
                     'class': analysis_result['estimated_data']['class'],
+                    'class_name': get_classification_name(analysis_result['estimated_data'].get('class')),
                     'confidence': analysis_result['estimated_data']['confidence']
                 }
             })

@@ -1,9 +1,9 @@
 import { ApiResponse } from '@/types/analysis';
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:8000';
 
 export async function getAnalysisLogs(page = 1, pageSize = 20, classification?: number) {
-    const url = new URL(`${API_BASE_URL}/api/logs/`);
+    const url = new URL(`${apiBaseUrl}/api/logs/`);
     url.searchParams.set('page', page.toString());
     url.searchParams.set('page_size', pageSize.toString());
 

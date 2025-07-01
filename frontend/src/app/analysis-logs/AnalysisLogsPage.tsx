@@ -3,6 +3,7 @@
 import { LogCard } from '@/components/LogCard';
 import { getClassificationColor } from '@/lib/utils';
 import { ApiResponse } from '@/types/analysis';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 
@@ -46,41 +47,54 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
         <div className="min-h-screen bg-gray-50 py-8 px-4">
             <div className="max-w-4xl mx-auto">
                 {/* ヘッダー */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="text-center mb-6 sm:mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                         画像分析ログ一覧
                     </h1>
-                    <p className="text-gray-600">
-                        AI画像分析の履歴と結果を確認できます
+                    <p className="text-sm sm:text-base text-gray-600 mb-4">
+                        画像解析結果の履歴を確認する
                     </p>
+                    <div className="flex justify-center">
+                        <Link
+                            href="/"
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                            🔍 新しい画像を解析
+                        </Link>
+                    </div>
                 </div>
 
                 {/* 統計情報 */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="text-sm text-gray-600">
                             {currentClassification ? (
-                                <div className="flex items-center gap-2">
-                                    <span>フィルター中:</span>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getClassificationColor(Number(currentClassification))}`}>
-                                        🏷️ {getCurrentClassificationName()}
-                                    </span>
-                                    <button
-                                        onClick={() => handleClassificationChange('')}
-                                        className="text-blue-600 hover:text-blue-800 text-xs underline"
-                                    >
-                                        フィルターをクリア
-                                    </button>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="font-medium">フィルター中:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getClassificationColor(Number(currentClassification))}`}>
+                                            {getCurrentClassificationName()}
+                                        </span>
+                                        <button
+                                            onClick={() => handleClassificationChange('')}
+                                            className="text-blue-600 hover:text-blue-800 text-xs underline whitespace-nowrap"
+                                        >
+                                            クリア
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
-                                <span>分類タグをクリックして絞り込みができます</span>
+                                <span className="text-xs sm:text-sm">分類タグをクリックして絞り込みができます</span>
                             )}
                         </div>
-                        <div className="text-sm text-gray-500">
-                            総件数: {pagination.total_count}件
-                            <span className="ml-2">
-                                ({((pagination.current_page - 1) * pagination.page_size) + 1} - {Math.min(pagination.current_page * pagination.page_size, pagination.total_count)}件目を表示)
-                            </span>
+                        <div className="text-xs sm:text-sm text-gray-500">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                                <span>総件数: {pagination.total_count}件</span>
+                                <span className="hidden sm:inline">|</span>
+                                <span className="text-xs">
+                                    {((pagination.current_page - 1) * pagination.page_size) + 1} - {Math.min(pagination.current_page * pagination.page_size, pagination.total_count)}件目を表示
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
