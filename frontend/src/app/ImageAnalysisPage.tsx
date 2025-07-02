@@ -191,7 +191,7 @@ export default function ImageAnalysisPage() {
                 {/* ヘッダー */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                        AI画像解析
+                        🖼️ AI画像解析
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 mb-4">
                         AIによる画像の物体検出を体験しよう
@@ -201,7 +201,7 @@ export default function ImageAnalysisPage() {
                             href="/analysis-logs"
                             className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                         >
-                            📋 解析ログ一覧を見る
+                            📜 解析ログ一覧を見る
                         </Link>
                     </div>
                 </div>

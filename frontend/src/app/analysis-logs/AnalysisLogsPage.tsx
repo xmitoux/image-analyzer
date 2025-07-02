@@ -49,7 +49,7 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                 {/* ヘッダー */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                        画像分析ログ一覧
+                        📜 画像分析ログ一覧
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 mb-4">
                         画像解析結果の履歴を確認する
@@ -59,7 +59,7 @@ export default function AnalysisLogsPage({ data }: AnalysisLogsPageProps) {
                             href="/"
                             className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                         >
-                            🔍 新しい画像を解析
+                            🖼️ 新しい画像を解析
                         </Link>
                     </div>
                 </div>
