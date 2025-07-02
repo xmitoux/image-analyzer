@@ -23,18 +23,91 @@ export default function ImageAnalysisPage() {
     const [error, setError] = useState<string>('');
     const [isDragOver, setIsDragOver] = useState(false);
 
-    const handleFileSelect = (file: File) => {
-        setSelectedFile(file);
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-        setResult(null);
-        setError('');
+    const handleFileSelect = async (file: File) => {
+        console.log('📁 原始ファイル:', file.name, file.type, file.size, 'bytes');
+
+        try {
+            // 画像をCanvas経由でJPEGに変換
+            const convertedFile = await convertToJpeg(file);
+            console.log('🔄 変換後ファイル:', convertedFile.name, convertedFile.type, convertedFile.size, 'bytes');
+
+            setSelectedFile(convertedFile);
+            const url = URL.createObjectURL(convertedFile);
+            setPreviewUrl(url);
+            setResult(null);
+            setError('');
+        } catch (error) {
+            console.error('❌ 画像変換エラー:', error);
+            setError('画像の処理中にエラーが発生しました。別の画像をお試しください。');
+        }
     };
 
-    const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // 画像をJPEG形式に変換するヘルパー関数
+    const convertToJpeg = (file: File): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.onload = () => {
+                    // Canvasで画像を描画
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    if (!ctx) {
+                        reject(new Error('Canvas context not available'));
+                        return;
+                    }
+
+                    // 画像サイズを取得（大きすぎる場合はリサイズ）
+                    let { width, height } = img;
+                    const maxSize = 2048; // 最大2048px
+
+                    if (width > maxSize || height > maxSize) {
+                        const ratio = Math.min(maxSize / width, maxSize / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    // 画像を描画
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // JPEGとしてBlob化
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('Failed to convert image'));
+                            return;
+                        }
+
+                        // 新しいFileオブジェクトを作成
+                        const convertedFile = new File(
+                            [blob],
+                            file.name.replace(/\.[^/.]+$/, '.jpg'), // 拡張子をjpgに変更
+                            {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            }
+                        );
+
+                        resolve(convertedFile);
+                    }, 'image/jpeg', 0.9); // JPEG品質90%
+                };
+
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = e.target?.result as string;
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleFileInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            handleFileSelect(file);
+            await handleFileSelect(file);
         }
     };
 
@@ -48,12 +121,12 @@ export default function ImageAnalysisPage() {
         setIsDragOver(false);
     };
 
-    const handleDrop = (event: React.DragEvent) => {
+    const handleDrop = async (event: React.DragEvent) => {
         event.preventDefault();
         setIsDragOver(false);
         const files = event.dataTransfer.files;
         if (files && files[0]) {
-            handleFileSelect(files[0]);
+            await handleFileSelect(files[0]);
         }
     };
 
@@ -68,19 +141,41 @@ export default function ImageAnalysisPage() {
             const formData = new FormData();
             formData.append('image', selectedFile);
 
+            console.log('🔄 画像解析開始:', selectedFile.name, selectedFile.size, 'bytes');
+
             // Next.js API Routes経由でバックエンドにアクセス
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 body: formData,
             });
 
+            console.log('📡 フロントエンドレスポンス:', response.status, response.statusText);
+
             if (!response.ok) {
-                const errorData = await response.text();
-                console.error('解析API エラー詳細:', errorData);
-                throw new Error(`HTTP ${response.status}`);
+                // エラーレスポンスの詳細を取得
+                try {
+                    const errorData = await response.json();
+                    console.error('❌ フロントエンドエラー詳細:', errorData);
+
+                    const errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                    setError(`解析エラー: ${errorMessage}`);
+
+                    // 詳細なエラー情報があれば追加表示
+                    if (errorData.error) {
+                        console.error('❌ 詳細エラー:', errorData.error);
+                    }
+                    return;
+                } catch (parseError) {
+                    console.error('❌ エラーレスポンス解析失敗:', parseError);
+                    const errorText = await response.text();
+                    console.error('❌ エラーレスポンス生テキスト:', errorText);
+                    setError(`解析エラー: HTTP ${response.status} - ${errorText || response.statusText}`);
+                    return;
+                }
             }
 
             const data = await response.json();
+            console.log('✅ 解析成功:', data);
             setResult(data);
         } catch (error) {
             console.error('Analysis error:', error);
