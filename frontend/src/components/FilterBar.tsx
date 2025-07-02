@@ -8,6 +8,7 @@ type FilterBarProps = {
     pageSize: number;
     totalItems: number;
     onClearFilter: () => void;
+    isLoading?: boolean;
     className?: string;
 };
 
@@ -19,13 +20,14 @@ export function FilterBar({
     pageSize,
     totalItems,
     onClearFilter,
+    isLoading = false,
     className = ''
 }: FilterBarProps) {
     const startItem = ((currentPage - 1) * pageSize) + 1;
     const endItem = Math.min(currentPage * pageSize, totalItems);
 
     return (
-        <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 ${className}`}>
+        <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 ${isLoading ? 'opacity-75' : ''} ${className}`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="text-sm text-gray-600">
                     {currentClassification ? (
@@ -39,7 +41,9 @@ export function FilterBar({
                                 />
                                 <button
                                     onClick={onClearFilter}
-                                    className="text-blue-600 hover:text-blue-800 text-xs underline whitespace-nowrap"
+                                    disabled={isLoading}
+                                    className={`text-blue-600 hover:text-blue-800 text-xs underline whitespace-nowrap ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
                                 >
                                     クリア
                                 </button>

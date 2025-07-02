@@ -8,10 +8,11 @@ type PaginationInfo = {
 type PaginationProps = {
     pagination: PaginationInfo;
     onPageChange: (page: number) => void;
+    disabled?: boolean;
     className?: string;
 };
 
-export function Pagination({ pagination, onPageChange, className = '' }: PaginationProps) {
+export function Pagination({ pagination, onPageChange, disabled = false, className = '' }: PaginationProps) {
     const getPageNumbers = () => {
         const pages = [];
         const maxVisiblePages = 5;
@@ -38,14 +39,14 @@ export function Pagination({ pagination, onPageChange, className = '' }: Paginat
     };
 
     return (
-        <div className={`flex justify-center ${className}`}>
+        <div className={`flex justify-center ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}>
             <div className="flex items-center gap-3">
                 <button
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_previous
-                            ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
-                            : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_previous && !disabled
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
                         }`}
-                    disabled={!pagination.has_previous}
+                    disabled={!pagination.has_previous || disabled}
                     onClick={() => onPageChange(pagination.current_page - 1)}
                 >
                     前へ
@@ -55,10 +56,11 @@ export function Pagination({ pagination, onPageChange, className = '' }: Paginat
                     {getPageNumbers().map((pageNum) => (
                         <button
                             key={pageNum}
-                            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${pageNum === pagination.current_page
-                                    ? 'bg-blue-500 text-white border border-blue-500'
-                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${pageNum === pagination.current_page && !disabled
+                                ? 'bg-blue-500 text-white border border-blue-500'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                                 }`}
+                            disabled={disabled}
                             onClick={() => onPageChange(pageNum)}
                         >
                             {pageNum}
@@ -67,11 +69,11 @@ export function Pagination({ pagination, onPageChange, className = '' }: Paginat
                 </div>
 
                 <button
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_next
-                            ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
-                            : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${pagination.has_next && !disabled
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-500'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
                         }`}
-                    disabled={!pagination.has_next}
+                    disabled={!pagination.has_next || disabled}
                     onClick={() => onPageChange(pagination.current_page + 1)}
                 >
                     次へ
