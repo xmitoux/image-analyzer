@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 type AnalysisResult = {
     id: number;
     success: boolean;
@@ -13,10 +15,11 @@ type AnalysisResultCardProps = {
     isAnalyzing: boolean;
     result: AnalysisResult | null;
     error: string;
+    analyzedImageUrl?: string;
     className?: string;
 };
 
-export function AnalysisResultCard({ isAnalyzing, result, error, className = '' }: AnalysisResultCardProps) {
+export function AnalysisResultCard({ isAnalyzing, result, error, analyzedImageUrl, className = '' }: AnalysisResultCardProps) {
     const LoadingState = () => (
         <div className="text-center py-6">
             <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
@@ -25,7 +28,21 @@ export function AnalysisResultCard({ isAnalyzing, result, error, className = '' 
     );
 
     const SuccessState = ({ result }: { result: AnalysisResult }) => (
-        <div className="space-y-3">
+        <div className="space-y-4">
+            {/* 解析した画像を表示 */}
+            {analyzedImageUrl && (
+                <div className="mb-4">
+                    <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                            src={analyzedImageUrl}
+                            alt="解析済み画像"
+                            fill
+                            className="object-contain"
+                        />
+                    </div>
+                </div>
+            )}
+
             <div className="flex items-center text-green-600 mb-3">
                 <span className="text-lg mr-2">✅</span>
                 <span className="text-sm font-medium">解析成功</span>

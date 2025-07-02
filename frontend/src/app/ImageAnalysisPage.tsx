@@ -5,7 +5,7 @@ import { AnalyzeButton } from '@/components/AnalyzeButton';
 import { AppHeader } from '@/components/AppHeader';
 import { FileUpload } from '@/components/FileUpload';
 import { ImagePreviewCard } from '@/components/ImagePreviewCard';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type AnalysisResult = {
     id: number;
@@ -23,8 +23,21 @@ export default function ImageAnalysisPage() {
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const [analyzedImageUrl, setAnalyzedImageUrl] = useState<string>(''); // 解析済み画像URL
     const [error, setError] = useState<string>('');
     const [isDragOver, setIsDragOver] = useState(false);
+
+    // メモリリークを防ぐためのクリーンアップ
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+            if (analyzedImageUrl) {
+                URL.revokeObjectURL(analyzedImageUrl);
+            }
+        };
+    }, [previewUrl, analyzedImageUrl]);
 
     const handleFileSelect = async (file: File) => {
         console.log('📁 原始ファイル:', file.name, file.type, file.size, 'bytes');
@@ -38,6 +51,7 @@ export default function ImageAnalysisPage() {
             const url = URL.createObjectURL(convertedFile);
             setPreviewUrl(url);
             setResult(null);
+            setAnalyzedImageUrl(''); // 前の解析済み画像をクリア
             setError('');
         } catch (error) {
             console.error('❌ 画像変換エラー:', error);
@@ -173,6 +187,13 @@ export default function ImageAnalysisPage() {
             const data = await response.json();
             console.log('✅ 解析成功:', data);
             setResult(data);
+
+            // 解析成功時は画像URLを保存してinputをクリア
+            if (data.success) {
+                setAnalyzedImageUrl(previewUrl);
+                setSelectedFile(null);
+                setPreviewUrl('');
+            }
         } catch (error) {
             console.error('Analysis error:', error);
             setError('解析中にエラーが発生しました。しばらく待ってから再度お試しください。');
@@ -215,6 +236,7 @@ export default function ImageAnalysisPage() {
                             setSelectedFile(null);
                             setPreviewUrl('');
                             setResult(null);
+                            setAnalyzedImageUrl(''); // 解析済み画像もクリア
                             setError('');
                         }}
                         onFileSelect={handleFileSelect}
@@ -237,6 +259,7 @@ export default function ImageAnalysisPage() {
                     isAnalyzing={isAnalyzing}
                     result={result}
                     error={error}
+                    analyzedImageUrl={analyzedImageUrl}
                 />
             </div>
         </div>
