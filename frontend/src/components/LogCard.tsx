@@ -9,11 +9,13 @@ import { StatusBadge } from './StatusBadge';
 type LogCardProps = {
     log: AnalysisLog;
     onClassificationClick?: (classification: number) => void;
+    disabled?: boolean;
 }
 
-export function LogCard({ log, onClassificationClick }: LogCardProps) {
+export function LogCard({ log, onClassificationClick, disabled = false }: LogCardProps) {
     return (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className={`bg-white rounded-lg shadow-md border border-gray-200 p-4 hover:shadow-lg transition-shadow h-full flex flex-col ${disabled ? 'opacity-50 pointer-events-none' : ''
+            }`}>
             {/* 画像プレビュー部分 */}
             <div className="w-full mb-4">
                 <ImagePreview

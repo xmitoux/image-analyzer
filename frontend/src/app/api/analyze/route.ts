@@ -3,52 +3,52 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
+        const imageFile = formData.get('image') as File;
+
+        if (!imageFile) {
+            return NextResponse.json({
+                success: false,
+                message: 'image file is required'
+            }, { status: 400 });
+        }
 
         // バックエンドのURL
         const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:8000';
 
-        console.log('🔄 リクエスト開始:', `${apiBaseUrl}/api/analyze/`);
+        // 環境変数でVision APIを使うかモックを使うかを決定
+        const useVisionAPI = process.env.USE_VISION_API === 'true';
 
-        // バックエンドにリクエスト
-        const response = await fetch(`${apiBaseUrl}/api/analyze/`, {
-            method: 'POST',
-            body: formData,
-        });
+        if (useVisionAPI) {
+            // Vision APIを使用する場合
+            console.log('🔄 Vision API リクエスト開始:', `${apiBaseUrl}/api/analyze/`);
 
-        console.log('📡 バックエンドレスポンス:', response.status, response.statusText);
+            const response = await fetch(`${apiBaseUrl}/api/analyze/`, {
+                method: 'POST',
+                body: formData,
+            });
 
-        if (!response.ok) {
-            // エラーレスポンスの詳細を取得
-            let errorMessage = `Backend API Error: ${response.status} ${response.statusText}`;
-            try {
-                const errorData = await response.json();
-                console.error('❌ バックエンドエラー詳細:', errorData);
-                errorMessage = errorData.message || errorMessage;
+            return await handleBackendResponse(response, 'Vision API');
 
-                return NextResponse.json({
-                    success: false,
-                    message: errorMessage,
-                    error: errorData,
-                    status: response.status
-                }, { status: response.status });
-            } catch (parseError) {
-                console.error('❌ エラーレスポンス解析失敗:', parseError);
-                const errorText = await response.text();
-                console.error('❌ エラーレスポンス生テキスト:', errorText);
+        } else {
+            // モックAPIを使用する場合
+            const mockImagePath = `/image/mock/${Date.now()}/${imageFile.name}`;
 
-                return NextResponse.json({
-                    success: false,
-                    message: errorMessage,
-                    error: errorText,
-                    status: response.status
-                }, { status: response.status });
-            }
+            console.log('🔄 モックAPI リクエスト開始:', `${apiBaseUrl}/api/analyze-mock/`);
+            console.log('📁 モック画像パス:', mockImagePath);
+
+            const response = await fetch(`${apiBaseUrl}/api/analyze-mock/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_path: mockImagePath
+                }),
+            });
+
+            return await handleBackendResponse(response, 'モックAPI');
         }
 
-        const data = await response.json();
-        console.log('✅ バックエンド成功レスポンス:', data);
-
-        return NextResponse.json(data);
     } catch (error) {
         console.error('💥 Analyze API Error:', error);
         return NextResponse.json(
@@ -60,4 +60,41 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+// エラーハンドリングを共通化する関数
+async function handleBackendResponse(response: Response, apiType: string) {
+    console.log('📡 バックエンドレスポンス:', response.status, response.statusText);
+
+    if (!response.ok) {
+        // エラーレスポンスの詳細を取得
+        let errorMessage = `Backend API Error: ${response.status} ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            console.error('❌ バックエンドエラー詳細:', errorData);
+            errorMessage = errorData.message || errorMessage;
+
+            return NextResponse.json({
+                success: false,
+                message: errorMessage,
+                error: errorData,
+                status: response.status
+            }, { status: response.status });
+        } catch (parseError) {
+            console.error('❌ エラーレスポンス解析失敗:', parseError);
+            const errorText = await response.text();
+            console.error('❌ エラーレスポンス生テキスト:', errorText);
+
+            return NextResponse.json({
+                success: false,
+                message: errorMessage,
+                error: errorText,
+                status: response.status
+            }, { status: response.status });
+        }
+    }
+
+    const data = await response.json();
+    console.log(`✅ ${apiType} 成功レスポンス:`, data);
+    return NextResponse.json(data);
 }

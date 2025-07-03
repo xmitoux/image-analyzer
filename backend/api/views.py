@@ -267,8 +267,8 @@ def call_mock_ai_analysis_api_local(image_content):
     processing_time = random.uniform(0.3, 1.2)
     time.sleep(processing_time)
 
-    # 80%の確率で成功、20%で失敗
-    if random.random() > 0.2:
+    # 90%の確率で成功、10%で失敗
+    if random.random() > 0.1:
         return {
             'success': True,
             'message': 'success',
