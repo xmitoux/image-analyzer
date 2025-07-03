@@ -36,5 +36,5 @@ class AiAnalysisLogListSerializer(serializers.ModelSerializer):
                 label = ObjectLabel.objects.get(id=obj.classification)
                 return label.name
             except ObjectLabel.DoesNotExist:
-                return f"ラベル ID: {obj.classification}"
+                return f"クラス {obj.classification}"
         return None

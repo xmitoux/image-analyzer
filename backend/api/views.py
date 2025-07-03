@@ -22,7 +22,7 @@ def get_classification_name(classification_id):
         label = ObjectLabel.objects.get(id=classification_id)
         return label.name
     except ObjectLabel.DoesNotExist:
-        return f"ラベル ID: {classification_id}"
+        return f"クラス {classification_id}"
 
 
 @api_view(['GET'])
