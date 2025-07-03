@@ -27,9 +27,10 @@ export default function ImageAnalysisPage() {
     const [error, setError] = useState<string>('');
     const [isDragOver, setIsDragOver] = useState(false);
 
-    // メモリリークを防ぐためのクリーンアップ
+    // メモリリークを防ぐためのクリーンアップ（コンポーネントアンマウント時のみ）
     useEffect(() => {
         return () => {
+            // コンポーネントがアンマウントされる時のみクリーンアップ
             if (previewUrl) {
                 URL.revokeObjectURL(previewUrl);
             }
@@ -37,7 +38,8 @@ export default function ImageAnalysisPage() {
                 URL.revokeObjectURL(analyzedImageUrl);
             }
         };
-    }, [previewUrl, analyzedImageUrl]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // 空の依存配列でマウント/アンマウント時のみ実行
 
     const handleFileSelect = async (file: File) => {
         console.log('📁 原始ファイル:', file.name, file.type, file.size, 'bytes');
@@ -47,12 +49,26 @@ export default function ImageAnalysisPage() {
             const convertedFile = await convertToJpeg(file);
             console.log('🔄 変換後ファイル:', convertedFile.name, convertedFile.type, convertedFile.size, 'bytes');
 
-            setSelectedFile(convertedFile);
+            // 古いpreviewUrlがある場合のみクリーンアップ
+            const oldPreviewUrl = previewUrl;
+            const oldAnalyzedImageUrl = analyzedImageUrl;
+
             const url = URL.createObjectURL(convertedFile);
+
+            // 状態を更新
+            setSelectedFile(convertedFile);
             setPreviewUrl(url);
             setResult(null);
-            setAnalyzedImageUrl(''); // 前の解析済み画像をクリア
+            setAnalyzedImageUrl('');
             setError('');
+
+            // 古いURLをクリーンアップ（状態更新後に実行）
+            if (oldPreviewUrl) {
+                URL.revokeObjectURL(oldPreviewUrl);
+            }
+            if (oldAnalyzedImageUrl) {
+                URL.revokeObjectURL(oldAnalyzedImageUrl);
+            }
         } catch (error) {
             console.error('❌ 画像変換エラー:', error);
             setError('画像の処理中にエラーが発生しました。別の画像をお試しください。');
@@ -233,11 +249,23 @@ export default function ImageAnalysisPage() {
                         previewUrl={previewUrl}
                         fileName={selectedFile?.name}
                         onDelete={() => {
+                            // 古いURLを保存してからクリーンアップ
+                            const oldPreviewUrl = previewUrl;
+                            const oldAnalyzedImageUrl = analyzedImageUrl;
+
                             setSelectedFile(null);
                             setPreviewUrl('');
                             setResult(null);
-                            setAnalyzedImageUrl(''); // 解析済み画像もクリア
+                            setAnalyzedImageUrl('');
                             setError('');
+
+                            // URLクリーンアップ
+                            if (oldPreviewUrl) {
+                                URL.revokeObjectURL(oldPreviewUrl);
+                            }
+                            if (oldAnalyzedImageUrl) {
+                                URL.revokeObjectURL(oldAnalyzedImageUrl);
+                            }
                         }}
                         onFileSelect={handleFileSelect}
                         isDragOver={isDragOver}
