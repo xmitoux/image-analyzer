@@ -28,11 +28,11 @@ export function AnalysisResultCard({ isAnalyzing, result, error, analyzedImageUr
     );
 
     const SuccessState = ({ result }: { result: AnalysisResult }) => (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
             {/* 解析した画像を表示 */}
             {analyzedImageUrl && (
-                <div className="mb-4">
-                    <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                <div className="mb-3 sm:mb-4">
+                    <div className="relative w-full h-24 sm:h-32 md:h-40 bg-gray-100 rounded-lg overflow-hidden">
                         <Image
                             src={analyzedImageUrl}
                             alt="解析済み画像"
@@ -43,11 +43,11 @@ export function AnalysisResultCard({ isAnalyzing, result, error, analyzedImageUr
                 </div>
             )}
 
-            <div className="flex items-center text-green-600 mb-3">
+            <div className="flex items-center text-green-600 mb-2 sm:mb-3">
                 <span className="text-lg mr-2">✅</span>
                 <span className="text-sm font-medium">解析成功</span>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-1.5 sm:space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-xs sm:text-sm text-gray-600">検出オブジェクト:</span>
                     <span className="font-medium text-blue-600 text-sm sm:text-base">
@@ -60,9 +60,9 @@ export function AnalysisResultCard({ isAnalyzing, result, error, analyzedImageUr
                         {Math.round((result.estimated_data?.confidence || 0) * 100)}%
                     </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 mt-1.5 sm:mt-2">
                     <div
-                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-green-600 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                         style={{ width: `${Math.round((result.estimated_data?.confidence || 0) * 100)}%` }}
                     />
                 </div>
@@ -106,8 +106,8 @@ export function AnalysisResultCard({ isAnalyzing, result, error, analyzedImageUr
     };
 
     return (
-        <div className={`bg-white rounded-lg shadow-sm p-4 sm:p-6 ${className}`}>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">解析結果</h3>
+        <div className={`bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 mb-4 ${className}`}>
+            <h3 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">解析結果</h3>
             {renderContent()}
         </div>
     );
