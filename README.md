@@ -150,6 +150,7 @@
 
 #### 画像解析 + 結果保存API (Vision API連携板)
 - `analyze_image()`: [`backend/api/views.py#L42`](https://github.com/xmitoux/image-analyzer/blob/ee43e1806af82497940dba1ec20cf3544586f469/backend/api/views.py#L42)
+- 課題処理のVision API連携板
 - 画像ファイルをGoogle Cloud Storageへアップロード
 - アップロードした画像をVision APIで解析
 - 解析結果をDBに保存
